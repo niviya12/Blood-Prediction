@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions for Role-Based Access Control
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == 'ADMIN';
+    }
+    
+    function isHospital() {
+      return isSignedIn() && request.auth.token.role == 'HOSPITAL';
+    }
+    
+    function isBloodBank() {
+      return isSignedIn() && request.auth.token.role == 'BLOOD_BANK';
+    }
+    
+    function isDonor() {
+      return isSignedIn() && request.auth.token.role == 'DONOR';
+    }
+
+    // User accounts
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Donors: public can read masked profiles for matching; donor can write own profile; hospitals can read authorized match info
+    match /donors/{donorId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && (request.auth.uid == donorId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Hospitals
+    match /hospitals/{hospitalId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (request.auth.uid == hospitalId || isAdmin());
+    }
+
+    // Blood Banks & Stock Inventory
+    match /blood_banks/{bloodBankId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (request.auth.uid == bloodBankId || isAdmin());
+    }
+    
+    match /blood_inventory/{inventoryId} {
+      allow read: if isSignedIn();
+      allow write: if isBloodBank() || isAdmin();
+    }
+
+    // Blood Requests
+    match /blood_requests/{requestId} {
+      allow read: if isSignedIn();
+      allow create: if isHospital() || isAdmin();
+      allow update: if isSignedIn(); // allow donors to respond or hospitals to fulfill
+      allow delete: if isAdmin();
+    }
+
+    // Donor Matches
+    match /donor_matches/{matchId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (
+        resource.data.receiverId == request.auth.uid ||
+        resource.data.receiverId == 'ALL' ||
+        isAdmin()
+      );
+      allow write: if isSignedIn();
+    }
+
+    // Admin Logs & System Telemetry
+    match /admin_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if isSignedIn();
+    }
+  }
+}

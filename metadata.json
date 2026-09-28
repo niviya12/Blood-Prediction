@@ -1,0 +1,6 @@
+{
+  "name": "AI Blood Prediction & Smart Donor Matcher",
+  "description": "Real-time AI-based blood requirement prediction, smart donor matching, emergency alerts, and blood bank inventory tracking system.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
